@@ -6,8 +6,9 @@ import scipy.signal
 import scipy.sparse.linalg
 
 target = cv.imread("./imgs/source.jpg")
-source = cv.imread("./imgs/timg.jpg")[int(1440 / 2 - 500):int(1440 / 2 + 500),
-                                      int(2560 / 2 - 500):int(2560 / 2 + 500)]
+# source = cv.imread("./imgs/timg.jpg")[int(1440 / 2 - 500):int(1440 / 2 + 500),
+#                                      int(2560 / 2 - 500):int(2560 / 2 + 500)]
+source = cv.imread("./imgs/target.png")
 print(source.shape)
 
 
@@ -161,29 +162,62 @@ def edit(source, targeting):
     # target = target.flatten()
     matA = get_matA(1000, 1000).tocsc()
     print("GET MATA")
-    # right = matA
-    kernel = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
-    matB = scipy.signal.convolve2d(source,
-                                   kernel,
-                                   boundary='symm',
-                                   mode='same')
-    # matB = matA.dot(source.flatten())
+    kernel_yr = np.array([[0, 0, 0], [-1, 1, 0], [0, 0, 0]])
+    kernel_yl = np.array([[0, 0, 0], [0, 1, -1], [0, 0, 0]])
+    kernel_xu = np.array([[0, -1, 0], [0, 1, 0], [0, 0, 0]])
+    kernel_xd = np.array([[0, 0, 0], [0, 1, 0], [0, -1, 0]])
+
+    matCXU = scipy.signal.convolve2d(source,
+                                     kernel_xu,
+                                     boundary='symm',
+                                     mode='same').flatten()
+    matCXD = scipy.signal.convolve2d(source,
+                                     kernel_xd,
+                                     boundary='symm',
+                                     mode='same').flatten()
+    matDXU = scipy.signal.convolve2d(target,
+                                     kernel_xu,
+                                     boundary='symm',
+                                     mode='same').flatten()
+    matDXD = scipy.signal.convolve2d(target,
+                                     kernel_xd,
+                                     boundary='symm',
+                                     mode='same').flatten()
+
+    matCYL = scipy.signal.convolve2d(source,
+                                     kernel_yl,
+                                     boundary='symm',
+                                     mode='same').flatten()
+    matCYR = scipy.signal.convolve2d(source,
+                                     kernel_yr,
+                                     boundary='symm',
+                                     mode='same').flatten()
+    matDYL = scipy.signal.convolve2d(target,
+                                     kernel_yl,
+                                     boundary='symm',
+                                     mode='same').flatten()
+    matDYR = scipy.signal.convolve2d(target,
+                                     kernel_yr,
+                                     boundary='symm',
+                                     mode='same').flatten()
+
+    matBXU = matCXU
+    matBYR = matCYR
+    matBXD = matCXD
+    matBYL = matCYL
+    for i in range(matBXU.shape[0]):
+        if (abs(matDXU[i]) > abs(matCXU[i])):
+            matBXU[i] = matDXU[i]
+        if (abs(matDXD[i]) > abs(matCXD[i])):
+            matBXD[i] = matDXD[i]
+        if (abs(matDYR[i]) > abs(matCYR[i])):
+            matBYR[i] = matDYR[i]
+        if (abs(matDYL[i]) > abs(matCYL[i])):
+            matBYL[i] = matDYL[i]
+
+    matB = matBXU + matBXD + matBYR + matBYL
     print(matB.shape)
-    matC = scipy.signal.convolve2d(target,
-                                   kernel,
-                                   boundary='symm',
-                                   mode='same')
-    print(matC.shape)
-    print(target.shape)
-    matC = matC.flatten()
-    matB = matB.flatten()
-    # matC = matA.dot(target.flatten())
-    for i in range(matB.shape[0]):
-        if abs(matB[i]) <= abs(matC[i]):
-            # if matB[i] < matC[i]:
-            matB[i] = matC[i]
-    # matB = matC.flatten()
-    # print(matB[60 + 50 * 1000] == matC[50, 60])
+    #matB = matB.flatten()
     target = target.flatten()
     print("EDITING")
     for x in range(1000):
@@ -207,4 +241,4 @@ def edit(source, targeting):
 
 result = cv.merge((edit(src_r, tar_r), edit(src_g, tar_g), edit(src_b, tar_b)))
 
-cv.imwrite("mixed_result.png", result)
+cv.imwrite("mixed_result_4.png", result)
